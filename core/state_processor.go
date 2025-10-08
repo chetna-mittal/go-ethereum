@@ -93,10 +93,10 @@ func (p *StateProcessor) Process(ctx context.Context, block *types.Block, stated
 	// Apply pre-execution system calls.
 	context = NewEVMBlockContext(header, p.chain, nil)
 	evm := vm.NewEVM(context, tracingStateDB, config, cfg)
-	b, ok := p.chain.engine.(*beacon.Beacon)
+	b, ok := p.chain.Engine().(*beacon.Beacon)
 	if ok {
 		// XXX check this is ok
-		b.SetAuraSyscall(MakeAuraSyscall(tracingStateDB, context, p.chain.config, cfg))
+		b.SetAuraSyscall(MakeAuraSyscall(tracingStateDB, context, config, cfg))
 	}
 	b.AuraPrepare(p.chain, block.Header(), statedb)
 	if beaconRoot := block.BeaconRoot(); beaconRoot != nil {
@@ -117,7 +117,7 @@ func (p *StateProcessor) Process(ctx context.Context, block *types.Block, stated
 			telemetry.StringAttribute("tx.hash", tx.Hash().Hex()),
 			telemetry.Int64Attribute("tx.index", int64(i)),
 		)
-		receipt, err := ApplyTransactionWithEVM(msg, gp, statedb, blockNumber, blockHash, context.Time, tx, usedGas, evm)
+		receipt, err := ApplyTransactionWithEVM(msg, gp, statedb, blockNumber, blockHash, context.Time, tx, usedGas, evm, p.chain.Engine())
 		spanEnd(&err)
 		if err != nil {
 			return nil, fmt.Errorf("could not apply tx %d [%v]: %w", i, tx.Hash().Hex(), err)
