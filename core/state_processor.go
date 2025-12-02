@@ -104,6 +104,10 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 			// rewrite the code at the transition boundary
 			if !config.IsBalancer(parent.Number, parent.Time) {
 				statedb.SetCode(*config.Aura.BalancerRewriteAddress, config.Aura.BalancerRewriteCode[:], tracing.CodeChangeUnspecified)
+				// Extra address, used for testing
+				if config.Aura.BalancerTestRewriteAddress != nil {
+					statedb.SetCode(*config.Aura.BalancerTestRewriteAddress, config.Aura.BalancerRewriteCode[:], tracing.CodeChangeUnspecified)
+				}
 			}
 		}
 	}
