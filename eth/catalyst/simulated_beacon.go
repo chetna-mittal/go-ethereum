@@ -105,7 +105,7 @@ func payloadVersion(config *params.ChainConfig, time uint64) engine.PayloadVersi
 	switch config.LatestFork(time) {
 	case forks.Amsterdam:
 		return engine.PayloadV4
-	case forks.BPO5, forks.BPO4, forks.BPO3, forks.BPO2, forks.BPO1, forks.Osaka, forks.Prague, forks.Cancun:
+	case forks.BPO5, forks.BPO4, forks.BPO3, forks.BPO2, forks.BPO1, forks.Osaka, forks.Balancer, forks.Prague, forks.Cancun:
 		return engine.PayloadV3
 	case forks.Paris, forks.Shanghai:
 		return engine.PayloadV2
@@ -126,7 +126,7 @@ func NewSimulatedBeacon(period uint64, feeRecipient common.Address, eth *eth.Eth
 	// if genesis block, send forkchoiceUpdated to trigger transition to PoS
 	if block.Number.Sign() == 0 {
 		version := payloadVersion(eth.BlockChain().Config(), block.Time)
-		if _, err := engineAPI.forkchoiceUpdated(context.Background(), current, nil, version, false); err != nil {
+		if _, err := engineAPI.forkchoiceUpdated(current, nil, version, false); err != nil {
 			return nil, err
 		}
 	}
@@ -375,7 +375,7 @@ func (c *SimulatedBeacon) Rollback() {
 func (c *SimulatedBeacon) Fork(parentHash common.Hash) error {
 	// Ensure no pending transactions.
 	c.eth.TxPool().Sync()
-	if pending, _ := c.eth.TxPool().Pending(txpool.PendingFilter{}); len(pending) != 0 {
+	if len(c.eth.TxPool().Pending(txpool.PendingFilter{})) != 0 {
 		return errors.New("pending block dirty")
 	}
 
@@ -389,7 +389,7 @@ func (c *SimulatedBeacon) Fork(parentHash common.Hash) error {
 
 // AdjustTime creates a new block with an adjusted timestamp.
 func (c *SimulatedBeacon) AdjustTime(adjustment time.Duration) error {
-	if pending, _ := c.eth.TxPool().Pending(txpool.PendingFilter{}); len(pending) != 0 {
+	if len(c.eth.TxPool().Pending(txpool.PendingFilter{})) != 0 {
 		return errors.New("could not adjust time on non-empty block")
 	}
 	parent := c.eth.BlockChain().CurrentBlock()
