@@ -457,7 +457,7 @@ func (api *ConsensusAPI) GetPayloadV4(payloadID engine.PayloadID) (*engine.Execu
 		payloadID,
 		false,
 		[]engine.PayloadVersion{engine.PayloadV3},
-		[]forks.Fork{forks.Prague},
+		[]forks.Fork{forks.Prague, forks.Balancer},
 	)
 }
 
@@ -538,7 +538,7 @@ func (api *ConsensusAPI) GetBlobsV1(hashes []common.Hash) ([]*engine.BlobAndProo
 	// Reject the request if Osaka has been activated.
 	// follow https://github.com/ethereum/execution-apis/blob/main/src/engine/osaka.md#cancun-api
 	head := api.eth.BlockChain().CurrentHeader()
-	if !api.checkFork(head.Time, forks.Cancun, forks.Prague) {
+	if !api.checkFork(head.Time, forks.Cancun, forks.Prague, forks.Balancer) {
 		return nil, unsupportedForkErr("engine_getBlobsV1 is only available at Cancun/Prague fork")
 	}
 	if len(hashes) > 128 {
