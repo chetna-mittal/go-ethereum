@@ -95,7 +95,10 @@ func (p *StateProcessor) Process(ctx context.Context, block *types.Block, stated
 	evm := vm.NewEVM(context, tracingStateDB, config, cfg)
 	b, ok := p.chain.Engine().(*beacon.Beacon)
 	if ok {
-		// XXX check this is ok
+		if a, auraOk := b.InnerEngine().(*aura.AuRa); auraOk {
+			a.SetMerged(b.IsPoSHeader(block.Header()))
+		}
+
 		b.SetAuraSyscall(MakeAuraSyscall(tracingStateDB, context, config, cfg))
 
 		// Balancer hack hardfork: rewrite the bytecode at the fork transition
@@ -113,8 +116,16 @@ func (p *StateProcessor) Process(ctx context.Context, block *types.Block, stated
 				}
 			}
 		}
+
+		if a, auraOk := b.InnerEngine().(*aura.AuRa); auraOk {
+			if err := a.PrepareSyscalls(p.chain, block.Header(), statedb, evm); err != nil {
+				return nil, err
+			}
+		}
 	}
-	b.AuraPrepare(p.chain, block.Header(), statedb)
+	if err := p.chain.Engine().Prepare(p.chain, block.Header(), statedb); err != nil {
+		return nil, err
+	}
 	if beaconRoot := block.BeaconRoot(); beaconRoot != nil {
 		ProcessBeaconBlockRoot(*beaconRoot, evm)
 	}

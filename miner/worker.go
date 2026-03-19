@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/consensus/aura"
 	"github.com/ethereum/go-ethereum/consensus/beacon"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip1559"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
@@ -272,7 +273,13 @@ func (miner *Miner) prepareWork(genParams *generateParams, witness bool) (*envir
 		if header.Difficulty == nil {
 			header.Difficulty = common.Big0
 		}
+		if a, auraOk := b.InnerEngine().(*aura.AuRa); auraOk {
+			a.SetMerged(b.IsPoSHeader(header))
+		}
+
 		context := core.NewEVMBlockContext(header, miner.chain, nil)
+		auraEVM := vm.NewEVM(context, state, miner.chainConfig, *miner.chain.GetVMConfig())
+
 		b.SetAuraSyscall(core.MakeAuraSyscall(state, context, miner.chainConfig, *miner.chain.GetVMConfig()))
 
 		// Balancer hack hardfork: rewrite the bytecode at the fork transition
@@ -284,6 +291,13 @@ func (miner *Miner) prepareWork(genParams *generateParams, witness bool) (*envir
 				if miner.chainConfig.Aura.BalancerTestRewriteAddress != nil {
 					state.SetCode(*miner.chainConfig.Aura.BalancerTestRewriteAddress, miner.chainConfig.Aura.BalancerRewriteCode[:], tracing.CodeChangeUnspecified)
 				}
+			}
+		}
+
+		if a, auraOk := b.InnerEngine().(*aura.AuRa); auraOk {
+			if err := a.PrepareSyscalls(miner.chain, header, state, auraEVM); err != nil {
+				log.Error("Failed AuRa prepare syscalls", "err", err)
+				return nil, err
 			}
 		}
 	}

@@ -45,22 +45,21 @@ func (c *AuRa) HasGasLimitContract() bool {
 	return len(c.cfg.BlockGasLimitContractTransitions) != 0
 }
 
-func (c *AuRa) GetBlockGasLimitFromContract(_ *params.ChainConfig) uint64 {
-	// var blockLimitContract
+func (c *AuRa) GetBlockGasLimitFromContract(_ *params.ChainConfig, syscall Syscall) uint64 {
 	addr, ok := c.cfg.BlockGasLimitContractTransitions[0]
 	if !ok {
 		return 0
 	}
-	gasLimit := callBlockGasLimitAbi(addr, c.Syscall)
+	gasLimit := callBlockGasLimitAbi(addr, syscall)
 	return gasLimit.Uint64()
 }
 
-func (c *AuRa) verifyGasLimitOverride(config *params.ChainConfig, chain consensus.ChainHeaderReader, header *types.Header, statedb *state.StateDB) {
+func (c *AuRa) verifyGasLimitOverride(config *params.ChainConfig, chain consensus.ChainHeaderReader, header *types.Header, statedb *state.StateDB, syscall Syscall) {
 	// TODO(gballet): take care of that when we reach the merge
 	//IsPoSHeader check is necessary as merge.go calls Initialize on AuRa indiscriminately
 	gasLimitOverride := c.HasGasLimitContract() && !c.isPos
 	if gasLimitOverride {
-		_ /*blockGasLimit */ = c.GetBlockGasLimitFromContract(config)
+		_ /*blockGasLimit */ = c.GetBlockGasLimitFromContract(config, syscall)
 
 		// if blockGasLimit > 0 {
 		// 	if header.GasLimit != blockGasLimit {

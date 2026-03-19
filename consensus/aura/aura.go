@@ -21,6 +21,7 @@ import (
 	"container/list"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"sort"
 	"sync"
@@ -510,12 +511,28 @@ func (c *AuRa) VerifyUncles(chain consensus.ChainReader, header *types.Block) er
 	return nil
 }
 
-// Prepare implements consensus.Engine, preparing all the consensus fields of the
-// header for running the transactions on top.
-func (c *AuRa) Prepare(chain consensus.ChainHeaderReader, header *types.Header, statedb *state.StateDB) error {
-	c.verifyGasLimitOverride(chain.Config(), chain, header, statedb)
+// makeLocalSyscall creates a Syscall closure from an EVM instance.
+// This is a transitional helper — will be removed once all Syscall
+// usage is migrated to direct EVM calls.
+func makeLocalSyscall(evm *vm.EVM) Syscall {
+	return func(addr common.Address, data []byte) ([]byte, error) {
+		ret, _, err := evm.Call(params.SystemAddress, addr, data, math.MaxUint64, new(uint256.Int))
+		if err != nil {
+			panic(err)
+		}
+		evm.StateDB.Finalise(true)
+		return ret, err
+	}
+}
 
-	// func (c *AuRa) Initialize(config *params.ChainConfig, chain consensus.ChainHeaderReader, header *types.Header, state *state.StateDB, txs []types.Transaction, uncles []*types.Header, syscall consensus.SystemCall) {
+// PrepareSyscalls runs all AuRa preparation logic that requires EVM syscalls.
+// It should be called from state_processor.go and miner/worker.go where an EVM
+// is already available, replacing the old AuraPrepare path.
+func (c *AuRa) PrepareSyscalls(chain consensus.ChainHeaderReader, header *types.Header, statedb *state.StateDB, evm *vm.EVM) error {
+	syscall := makeLocalSyscall(evm)
+
+	c.verifyGasLimitOverride(chain.Config(), chain, header, statedb, syscall)
+
 	blockNum := header.Number.Uint64()
 	for address, rewrittenCode := range c.cfg.RewriteBytecode[blockNum] {
 		statedb.SetCode(address, rewrittenCode, tracing.CodeChangeContractCreation)
@@ -523,22 +540,19 @@ func (c *AuRa) Prepare(chain consensus.ChainHeaderReader, header *types.Header, 
 
 	c.certifierLock.Lock()
 	if c.cfg.Registrar != nil && c.certifier == nil && chain.Config().IsLondon(header.Number) {
-		c.certifier = getCertifier(*c.cfg.Registrar, c.Syscall)
+		c.certifier = getCertifier(*c.cfg.Registrar, syscall)
 	}
 	c.certifierLock.Unlock()
 
 	if blockNum == 1 {
-		proof, err := c.GenesisEpochData(header)
+		proof, err := c.GenesisEpochDataWithSyscall(header, syscall)
 		if err != nil {
 			panic(err)
 		}
-		err = c.e.PutEpoch(header.ParentHash, 0, proof) //TODO: block 0 hardcoded - need fix it inside validators
-		if err != nil {
+		if err = c.e.PutEpoch(header.ParentHash, 0, proof); err != nil {
 			panic(err)
 		}
 	}
-
-	// check_and_lock_block -> check_epoch_end_signal
 
 	epoch, err := c.e.GetEpoch(header.ParentHash, blockNum-1)
 	if err != nil {
@@ -548,9 +562,14 @@ func (c *AuRa) Prepare(chain consensus.ChainHeaderReader, header *types.Header, 
 	if !isEpochBegin {
 		return nil
 	}
-	return c.cfg.Validators.onEpochBegin(isEpochBegin, header, c.Syscall)
-	// check_and_lock_block -> check_epoch_end_signal END (before enact)
+	return c.cfg.Validators.onEpochBegin(isEpochBegin, header, syscall)
+}
 
+// Prepare implements consensus.Engine, preparing all the consensus fields of the
+// header for running the transactions on top.
+// Syscall-dependent logic has been moved to PrepareSyscalls.
+func (c *AuRa) Prepare(chain consensus.ChainHeaderReader, header *types.Header, statedb *state.StateDB) error {
+	return nil
 }
 
 func (c *AuRa) ApplyRewards(header *types.Header, state vm.StateDB) error {
@@ -717,7 +736,11 @@ func (c *AuRa) Authorize(signer common.Address) {
 }
 
 func (c *AuRa) GenesisEpochData(header *types.Header) ([]byte, error) {
-	setProof, err := c.cfg.Validators.genesisEpochData(header, c.Syscall)
+	return c.GenesisEpochDataWithSyscall(header, c.Syscall)
+}
+
+func (c *AuRa) GenesisEpochDataWithSyscall(header *types.Header, syscall Syscall) ([]byte, error) {
+	setProof, err := c.cfg.Validators.genesisEpochData(header, syscall)
 	if err != nil {
 		return nil, err
 	}
