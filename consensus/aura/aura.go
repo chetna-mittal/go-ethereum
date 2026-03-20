@@ -21,7 +21,6 @@ import (
 	"container/list"
 	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"sort"
 	"sync"
@@ -511,25 +510,10 @@ func (c *AuRa) VerifyUncles(chain consensus.ChainReader, header *types.Block) er
 	return nil
 }
 
-// makeLocalSyscall creates a Syscall closure from an EVM instance.
-// This is a transitional helper — will be removed once all Syscall
-// usage is migrated to direct EVM calls.
-func makeLocalSyscall(evm *vm.EVM) Syscall {
-	return func(addr common.Address, data []byte) ([]byte, error) {
-		ret, _, err := evm.Call(params.SystemAddress, addr, data, math.MaxUint64, new(uint256.Int))
-		if err != nil {
-			panic(err)
-		}
-		evm.StateDB.Finalise(true)
-		return ret, err
-	}
-}
-
 // PrepareSyscalls runs all AuRa preparation logic that requires EVM syscalls.
-// It should be called from state_processor.go and miner/worker.go where an EVM
-// is already available, replacing the old AuraPrepare path.
-func (c *AuRa) PrepareSyscalls(chain consensus.ChainHeaderReader, header *types.Header, statedb *state.StateDB, evm *vm.EVM) error {
-	syscall := makeLocalSyscall(evm)
+// It should be called from state_processor.go and miner/worker.go where a
+// Syscall is already available.
+func (c *AuRa) PrepareSyscalls(chain consensus.ChainHeaderReader, header *types.Header, statedb *state.StateDB, syscall Syscall) error {
 
 	c.verifyGasLimitOverride(chain.Config(), chain, header, statedb, syscall)
 

@@ -99,7 +99,9 @@ func (p *StateProcessor) Process(ctx context.Context, block *types.Block, stated
 			a.SetMerged(b.IsPoSHeader(block.Header()))
 		}
 
-		b.SetAuraSyscall(MakeAuraSyscall(tracingStateDB, context, config, cfg))
+		// Still set c.Syscall for Finalize/CalculateRewards/etc. (temporary)
+		auraSyscall := MakeAuraSyscall(tracingStateDB, context, config, cfg)
+		b.SetAuraSyscall(auraSyscall)
 
 		// Balancer hack hardfork: rewrite the bytecode at the fork transition
 		if config.Aura != nil && config.Aura.BalancerRewriteAddress != nil && config.IsBalancer(block.Number(), block.Time()) {
@@ -118,7 +120,7 @@ func (p *StateProcessor) Process(ctx context.Context, block *types.Block, stated
 		}
 
 		if a, auraOk := b.InnerEngine().(*aura.AuRa); auraOk {
-			if err := a.PrepareSyscalls(p.chain, block.Header(), statedb, evm); err != nil {
+			if err := a.PrepareSyscalls(p.chain, block.Header(), statedb, auraSyscall); err != nil {
 				return nil, err
 			}
 		}

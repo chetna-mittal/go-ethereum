@@ -278,9 +278,10 @@ func (miner *Miner) prepareWork(genParams *generateParams, witness bool) (*envir
 		}
 
 		context := core.NewEVMBlockContext(header, miner.chain, nil)
-		auraEVM := vm.NewEVM(context, state, miner.chainConfig, *miner.chain.GetVMConfig())
 
-		b.SetAuraSyscall(core.MakeAuraSyscall(state, context, miner.chainConfig, *miner.chain.GetVMConfig()))
+		// Still set c.Syscall for Finalize (temporary)
+		auraSyscall := core.MakeAuraSyscall(state, context, miner.chainConfig, *miner.chain.GetVMConfig())
+		b.SetAuraSyscall(auraSyscall)
 
 		// Balancer hack hardfork: rewrite the bytecode at the fork transition
 		if miner.chainConfig.Aura != nil && miner.chainConfig.Aura.BalancerRewriteAddress != nil && miner.chainConfig.IsBalancer(header.Number, header.Time) {
@@ -295,7 +296,7 @@ func (miner *Miner) prepareWork(genParams *generateParams, witness bool) (*envir
 		}
 
 		if a, auraOk := b.InnerEngine().(*aura.AuRa); auraOk {
-			if err := a.PrepareSyscalls(miner.chain, header, state, auraEVM); err != nil {
+			if err := a.PrepareSyscalls(miner.chain, header, state, auraSyscall); err != nil {
 				log.Error("Failed AuRa prepare syscalls", "err", err)
 				return nil, err
 			}
