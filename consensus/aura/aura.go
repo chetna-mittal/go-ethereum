@@ -21,6 +21,7 @@ import (
 	"container/list"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"sort"
 	"sync"
@@ -880,7 +881,7 @@ func (c *AuRa) CalculateRewards(_ *params.ChainConfig, header *types.Header, _ [
 }
 
 // See https://github.com/gnosischain/specs/blob/master/execution/withdrawals.md
-func (c *AuRa) ExecuteSystemWithdrawals(withdrawals []*types.Withdrawal) error {
+func (c *AuRa) ExecuteSystemWithdrawals(statedb vm.StateDB, chainConfig *params.ChainConfig, withdrawals []*types.Withdrawal) error {
 	if c.cfg.WithdrawalContractAddress == nil {
 		return nil
 	}
@@ -898,10 +899,10 @@ func (c *AuRa) ExecuteSystemWithdrawals(withdrawals []*types.Withdrawal) error {
 		return err
 	}
 
-	_, err = c.Syscall(*c.cfg.WithdrawalContractAddress, packed)
-	if err != nil {
-		log.Warn("ExecuteSystemWithdrawals", "err", err)
-	}
+	context := vm.BlockContext{}
+	vmConfig := vm.Config{}
+	evm := vm.NewEVM(context, statedb, chainConfig, vmConfig)
+	_, _, err = evm.Call(params.SystemAddress, *c.cfg.WithdrawalContractAddress, packed, math.MaxUint64, new(uint256.Int))
 	return err
 }
 
