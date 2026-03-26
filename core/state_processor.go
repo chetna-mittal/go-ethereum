@@ -147,7 +147,7 @@ func (p *StateProcessor) Process(ctx context.Context, block *types.Block, stated
 	}
 
 	// Finalize the block, applying any consensus engine specific extras (e.g. block rewards)
-	p.chain.Engine().Finalize(p.chain, header, tracingStateDB, block.Body(), receipts)
+	p.chain.Engine().Finalize(p.chain, header, tracingStateDB, block.Body(), receipts, evm)
 
 	return &ProcessResult{
 		Receipts: receipts,

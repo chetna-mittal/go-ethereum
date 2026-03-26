@@ -21,6 +21,7 @@ import (
 	"container/list"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"sort"
 	"sync"
@@ -553,8 +554,8 @@ func (c *AuRa) Prepare(chain consensus.ChainHeaderReader, header *types.Header, 
 
 }
 
-func (c *AuRa) ApplyRewards(header *types.Header, state vm.StateDB) error {
-	rewards, err := c.CalculateRewards(nil, header, nil)
+func (c *AuRa) ApplyRewards(header *types.Header, state vm.StateDB, evm *vm.EVM) error {
+	rewards, err := c.CalculateRewards(nil, header, nil, evm)
 	if err != nil {
 		return err
 	}
@@ -565,8 +566,8 @@ func (c *AuRa) ApplyRewards(header *types.Header, state vm.StateDB) error {
 }
 
 // word `signal epoch` == word `pending epoch`
-func (c *AuRa) Finalize(chain consensus.ChainHeaderReader, header *types.Header, state vm.StateDB, body *types.Body, receipts []*types.Receipt) {
-	if err := c.ApplyRewards(header, state); err != nil {
+func (c *AuRa) Finalize(chain consensus.ChainHeaderReader, header *types.Header, state vm.StateDB, body *types.Body, receipts []*types.Receipt, evm *vm.EVM) {
+	if err := c.ApplyRewards(header, state, evm); err != nil {
 		panic(err)
 	}
 
@@ -699,8 +700,8 @@ func allHeadersUntil(chain consensus.ChainHeaderReader, from *types.Header, to c
 }
 
 // FinalizeAndAssemble implements consensus.Engine
-func (c *AuRa) FinalizeAndAssemble(chain consensus.ChainHeaderReader, header *types.Header, state *state.StateDB, body *types.Body, receipts []*types.Receipt) (*types.Block, error) {
-	c.Finalize(chain, header, state, body, receipts)
+func (c *AuRa) FinalizeAndAssemble(chain consensus.ChainHeaderReader, header *types.Header, state *state.StateDB, body *types.Body, receipts []*types.Receipt, evm *vm.EVM) (*types.Block, error) {
+	c.Finalize(chain, header, state, body, receipts, evm)
 
 	// Assemble and return the final block for sealing
 	return types.NewBlock(header, body, receipts, trie.NewStackTrie(nil)), nil
@@ -837,7 +838,7 @@ func (c *AuRa) emptySteps(fromStep, toStep uint64, parentHash common.Hash) []Emp
 	return res
 }
 
-func (c *AuRa) CalculateRewards(_ *params.ChainConfig, header *types.Header, _ []*types.Header) ([]consensus.Reward, error) {
+func (c *AuRa) CalculateRewards(_ *params.ChainConfig, header *types.Header, _ []*types.Header, evm *vm.EVM) ([]consensus.Reward, error) {
 	var rewardContractAddress BlockRewardContract
 	var foundContract bool
 	for _, c := range c.cfg.BlockRewardContractTransitions {
@@ -851,7 +852,7 @@ func (c *AuRa) CalculateRewards(_ *params.ChainConfig, header *types.Header, _ [
 		beneficiaries := []common.Address{header.Coinbase}
 		rewardKind := []consensus.RewardKind{consensus.RewardAuthor}
 		var amounts []*big.Int
-		beneficiaries, amounts = callBlockRewardAbi(rewardContractAddress.address, c.Syscall, beneficiaries, rewardKind)
+		beneficiaries, amounts = callBlockRewardAbi(rewardContractAddress.address, evm, beneficiaries, rewardKind)
 		rewards := make([]consensus.Reward, len(amounts))
 		for i, amount := range amounts {
 			rewards[i].Beneficiary = beneficiaries[i]
@@ -880,7 +881,7 @@ func (c *AuRa) CalculateRewards(_ *params.ChainConfig, header *types.Header, _ [
 }
 
 // See https://github.com/gnosischain/specs/blob/master/execution/withdrawals.md
-func (c *AuRa) ExecuteSystemWithdrawals(withdrawals []*types.Withdrawal) error {
+func (c *AuRa) ExecuteSystemWithdrawals(statedb vm.StateDB, evm *vm.EVM, withdrawals []*types.Withdrawal) error {
 	if c.cfg.WithdrawalContractAddress == nil {
 		return nil
 	}
@@ -898,10 +899,7 @@ func (c *AuRa) ExecuteSystemWithdrawals(withdrawals []*types.Withdrawal) error {
 		return err
 	}
 
-	_, err = c.Syscall(*c.cfg.WithdrawalContractAddress, packed)
-	if err != nil {
-		log.Warn("ExecuteSystemWithdrawals", "err", err)
-	}
+	_, _, err = evm.Call(params.SystemAddress, *c.cfg.WithdrawalContractAddress, packed, math.MaxUint64, new(uint256.Int))
 	return err
 }
 

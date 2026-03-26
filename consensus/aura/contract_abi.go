@@ -2,17 +2,20 @@ package aura
 
 import (
 	"bytes"
+	"math"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/aura/contracts"
+	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
 )
 
-func callBlockRewardAbi(contractAddr common.Address, syscall Syscall, beneficiaries []common.Address, rewardKind []consensus.RewardKind) ([]common.Address, []*big.Int) {
+func callBlockRewardAbi(contractAddr common.Address, evm *vm.EVM, beneficiaries []common.Address, rewardKind []consensus.RewardKind) ([]common.Address, []*big.Int) {
 	castedKind := make([]uint16, len(rewardKind))
 	for i := range rewardKind {
 		castedKind[i] = uint16(rewardKind[i])
@@ -21,7 +24,7 @@ func callBlockRewardAbi(contractAddr common.Address, syscall Syscall, beneficiar
 	if err != nil {
 		panic(err)
 	}
-	out, err := syscall(contractAddr, packed)
+	out, _, err := evm.Call(params.SystemAddress, contractAddr, packed, math.MaxUint64, new(uint256.Int))
 	if err != nil {
 		panic(err)
 	}
