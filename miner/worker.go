@@ -214,7 +214,7 @@ func (miner *Miner) generateWork(ctx context.Context, genParam *generateParams, 
 		work.header.RequestsHash = &reqHash
 	}
 
-	block, err := miner.engine.FinalizeAndAssemble(ctx, miner.chain, work.header, work.state, &body, work.receipts)
+	block, err := miner.engine.FinalizeAndAssemble(ctx, miner.chain, work.header, work.state, &body, work.receipts, work.evm)
 	if err != nil {
 		return &newPayloadResult{err: err}
 	}
