@@ -882,7 +882,7 @@ func (c *AuRa) CalculateRewards(_ *params.ChainConfig, header *types.Header, _ [
 }
 
 // See https://github.com/gnosischain/specs/blob/master/execution/withdrawals.md
-func (c *AuRa) ExecuteSystemWithdrawals(statedb vm.StateDB, evm *vm.EVM, withdrawals []*types.Withdrawal) error {
+func (c *AuRa) ExecuteSystemWithdrawals(evm *vm.EVM, withdrawals []*types.Withdrawal) error {
 	if c.cfg.WithdrawalContractAddress == nil {
 		return nil
 	}

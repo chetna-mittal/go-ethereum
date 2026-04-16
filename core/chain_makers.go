@@ -392,14 +392,11 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, engine conse
 			misc.ApplyDAOHardFork(statedb)
 		}
 
-		var evm *vm.EVM
-		if config.IsShanghai(b.header.Number, b.header.Time) {
-			// EIP-2935
-			blockContext := NewEVMBlockContext(b.header, cm, &b.header.Coinbase)
-			blockContext.Random = &common.Hash{} // enable post-merge instruction set
-			evm = vm.NewEVM(blockContext, statedb, cm.config, vm.Config{})
-		}
+		blockContext := NewEVMBlockContext(b.header, cm, &b.header.Coinbase)
+		blockContext.Random = &common.Hash{} // enable post-merge instruction set
+		evm := vm.NewEVM(blockContext, statedb, cm.config, vm.Config{})
 		if config.IsPrague(b.header.Number, b.header.Time) || config.IsVerkle(b.header.Number, b.header.Time) {
+			// EIP-2935
 			ProcessParentBlockHash(b.header.ParentHash, evm)
 		}
 
