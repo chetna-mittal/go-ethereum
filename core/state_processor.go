@@ -199,13 +199,13 @@ func ApplyTransactionWithEVM(msg *Message, gp *GasPool, statedb *state.StateDB, 
 		switch engine := engine.(type) {
 		case *beacon.Beacon:
 			if a, ok := engine.InnerEngine().(*aura.AuRa); ok && msg.GasFeeCap.BitLen() == 0 {
-				if a.IsServiceTransaction(msg.From) {
+				if a.IsServiceTransaction(msg.From, evm) {
 					msg.SetFree()
 				}
 			}
 		case *aura.AuRa:
 			if msg.GasFeeCap.BitLen() == 0 {
-				if engine.IsServiceTransaction(msg.From) {
+				if engine.IsServiceTransaction(msg.From, evm) {
 					msg.SetFree()
 				}
 			}

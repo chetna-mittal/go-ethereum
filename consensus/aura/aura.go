@@ -771,7 +771,7 @@ func (c *AuRa) SealHash(header *types.Header) common.Hash {
 
 // See https://openethereum.github.io/Permissioning.html#gas-price
 // This is thread-safe: it only accesses the `certifier` which is used behind a RWLock
-func (c *AuRa) IsServiceTransaction(sender common.Address) bool {
+func (c *AuRa) IsServiceTransaction(sender common.Address, evm *vm.EVM) bool {
 	c.certifierLock.RLock()
 	defer c.certifierLock.RUnlock()
 	if c.certifier == nil {
@@ -781,7 +781,7 @@ func (c *AuRa) IsServiceTransaction(sender common.Address) bool {
 	if err != nil {
 		panic(err)
 	}
-	out, err := c.Syscall(*c.certifier, packed)
+	out, _, err := evm.Call(params.SystemAddress, *c.certifier, packed, math.MaxUint64, new(uint256.Int))
 	if err != nil {
 		panic(err)
 	}
