@@ -531,7 +531,7 @@ func (c *AuRa) Prepare(chain consensus.ChainHeaderReader, header *types.Header, 
 	c.certifierLock.Unlock()
 
 	if blockNum == 1 {
-		proof, err := c.GenesisEpochData(header)
+		proof, err := c.GenesisEpochData(header, evm)
 		if err != nil {
 			panic(err)
 		}
@@ -731,8 +731,8 @@ func (c *AuRa) Authorize(signer common.Address) {
 	//c.signFn = signFn
 }
 
-func (c *AuRa) GenesisEpochData(header *types.Header) ([]byte, error) {
-	setProof, err := c.cfg.Validators.genesisEpochData(header, c.Syscall)
+func (c *AuRa) GenesisEpochData(header *types.Header, evm *vm.EVM) ([]byte, error) {
+	setProof, err := c.cfg.Validators.genesisEpochData(header, evm)
 	if err != nil {
 		return nil, err
 	}
