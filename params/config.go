@@ -370,21 +370,21 @@ var (
 var (
 	// DefaultCancunBlobConfig is the default blob configuration for the Cancun fork.
 	DefaultCancunBlobConfig = &BlobConfig{
-		Target:         1,
-		Max:            2,
-		UpdateFraction: 1112826,
+		Target:         3,
+		Max:            6,
+		UpdateFraction: 3338477,
 	}
 	// DefaultPragueBlobConfig is the default blob configuration for the Prague fork.
 	DefaultPragueBlobConfig = &BlobConfig{
-		Target:         1,
-		Max:            2,
-		UpdateFraction: 1112826,
+		Target:         6,
+		Max:            9,
+		UpdateFraction: 5007716,
 	}
 	// DefaultOsakaBlobConfig is the default blob configuration for the Osaka fork.
 	DefaultOsakaBlobConfig = &BlobConfig{
-		Target:         1,
-		Max:            2,
-		UpdateFraction: 1112826,
+		Target:         6,
+		Max:            9,
+		UpdateFraction: 5007716,
 	}
 	// DefaultBPO1BlobConfig is the default blob configuration for the BPO1 fork.
 	DefaultBPO1BlobConfig = &BlobConfig{
@@ -494,6 +494,14 @@ type ChainConfig struct {
 	Clique             *CliqueConfig       `json:"clique,omitempty"`
 	BlobScheduleConfig *BlobScheduleConfig `json:"blobSchedule,omitempty"`
 	Aura               *AuRaConfig         `json:"aura,omitempty"`
+
+	// MinBlobGasPrice overrides the default minimum blob gas price for this chain.
+	// If nil, the global default (1 wei) is used.
+	MinBlobGasPrice *uint64 `json:"minBlobGasPrice,omitempty"`
+
+	// MaxBlobsPerTransaction overrides the default max blobs per transaction for this chain.
+	// If nil, the global default (6) is used.
+	MaxBlobsPerTransaction *int `json:"maxBlobsPerTransaction,omitempty"`
 }
 
 // EthashConfig is the consensus engine configs for proof-of-work based sealing.
@@ -736,6 +744,24 @@ type BlobScheduleConfig struct {
 	BPO4      *BlobConfig `json:"bpo4,omitempty"`
 	BPO5      *BlobConfig `json:"bpo5,omitempty"`
 	Amsterdam *BlobConfig `json:"amsterdam,omitempty"`
+}
+
+// GetMinBlobGasPrice returns the chain-specific minimum blob gas price,
+// falling back to the global default if not set.
+func (c *ChainConfig) GetMinBlobGasPrice() uint64 {
+	if c != nil && c.MinBlobGasPrice != nil {
+		return *c.MinBlobGasPrice
+	}
+	return DefaultBlobTxMinBlobGasprice
+}
+
+// GetMaxBlobsPerTransaction returns the chain-specific max blobs per tx,
+// falling back to the global default if not set.
+func (c *ChainConfig) GetMaxBlobsPerTransaction() int {
+	if c != nil && c.MaxBlobsPerTransaction != nil {
+		return *c.MaxBlobsPerTransaction
+	}
+	return DefaultBlobTxMaxBlobs
 }
 
 // IsHomestead returns whether num is either equal to the homestead block or greater.

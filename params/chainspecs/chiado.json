@@ -18,6 +18,7 @@
   "pragueTime": 1741254220,
   "osakaTime": 1773653580,
   "minBlobGasPrice": 1000000000,
+  "maxBlobsPerTransaction": 2,
   "blobSchedule": {
     "cancun": {
       "target": 1,
