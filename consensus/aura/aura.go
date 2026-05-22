@@ -513,6 +513,12 @@ func (c *AuRa) VerifyUncles(chain consensus.ChainReader, header *types.Block) er
 // Prepare implements consensus.Engine, preparing all the consensus fields of the
 // header for running the transactions on top.
 func (c *AuRa) Prepare(chain consensus.ChainHeaderReader, header *types.Header, statedb *state.StateDB) error {
+	// If the system address does not exist, create it and finalise the state
+	if !statedb.Exist(params.SystemAddress) {
+		statedb.CreateAccount(params.SystemAddress)
+		statedb.Finalise(true)
+	}
+
 	c.verifyGasLimitOverride(chain.Config(), chain, header, statedb)
 
 	// func (c *AuRa) Initialize(config *params.ChainConfig, chain consensus.ChainHeaderReader, header *types.Header, state *state.StateDB, txs []types.Transaction, uncles []*types.Header, syscall consensus.SystemCall) {
