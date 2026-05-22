@@ -564,11 +564,6 @@ func (g *Genesis) toBlockWithRoot(root common.Hash) *types.Block {
 		Root:       root,
 	}
 
-	// If this is an Aura chain but AuRaSeal is not provided or empty,
-	// set it to 65 zero bytes to ensure proper RLP encoding
-	if g.Config != nil && g.Config.Aura != nil && len(head.Signature) == 0 {
-		head.Signature = make([]byte, 65)
-	}
 	if g.GasLimit == 0 {
 		head.GasLimit = params.GenesisGasLimit
 	}
@@ -578,6 +573,17 @@ func (g *Genesis) toBlockWithRoot(root common.Hash) *types.Block {
 		} else if g.Mixhash == (common.Hash{}) {
 			head.Difficulty = params.GenesisDifficulty
 		}
+	}
+	// If this is a pre-merge AuRa chain and no seal was provided, set a 65-byte
+	// zero signature so EncodeRLP uses the AuRa branch (Step + Signature) instead
+	// of the standard Ethereum branch (MixDigest + Nonce).
+	// Post-merge genesis blocks have difficulty == 0 and must use standard Ethereum
+	// header encoding so their hash matches what execution-spec-tests and the Engine
+	// API expect. We check head.Difficulty here (after the nil-default above) so
+	// both explicitly-zero and unset-then-defaulted-to-zero cases are handled correctly.
+	if g.Config != nil && g.Config.Aura != nil && len(head.Signature) == 0 &&
+		head.Difficulty != nil && head.Difficulty.Sign() > 0 {
+		head.Signature = make([]byte, 65)
 	}
 	if g.Config != nil && g.Config.IsLondon(common.Big0) {
 		if g.BaseFee != nil {
