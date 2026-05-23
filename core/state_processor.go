@@ -429,6 +429,8 @@ func AssembleBlock(engine consensus.Engine, chain consensus.ChainHeaderReader, h
 
 func MakeAuraSyscall(statedb vm.StateDB, context vm.BlockContext, chainConfig *params.ChainConfig, vmConfig vm.Config) aura.Syscall {
 	return func(contractaddr common.Address, data []byte) ([]byte, error) {
+		// Touch SystemAddress so it is journaled and persists in the state trie
+		statedb.AddBalance(params.SystemAddress, new(uint256.Int), tracing.BalanceChangeTouchAccount)
 		evm := vm.NewEVM(context, statedb, chainConfig, vmConfig)
 		ret, _, err := evm.Call(params.SystemAddress, contractaddr, data, vm.NewGasBudget(math.MaxUint64), new(uint256.Int))
 		if err != nil {

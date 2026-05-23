@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/aura/contracts"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
@@ -16,6 +17,8 @@ import (
 )
 
 func callBlockRewardAbi(contractAddr common.Address, evm *vm.EVM, beneficiaries []common.Address, rewardKind []consensus.RewardKind) ([]common.Address, []*big.Int) {
+	// Touch SystemAddress so it is journaled and persists in the state trie
+	evm.StateDB.AddBalance(params.SystemAddress, new(uint256.Int), tracing.BalanceChangeTouchAccount)
 	castedKind := make([]uint16, len(rewardKind))
 	for i := range rewardKind {
 		castedKind[i] = uint16(rewardKind[i])
