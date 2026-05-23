@@ -520,6 +520,7 @@ func (c *AuRa) Prepare(chain consensus.ChainHeaderReader, header *types.Header, 
 	// If the system address does not exist, create it and finalise the state
 	if !statedb.Exist(params.SystemAddress) {
 		statedb.CreateAccount(params.SystemAddress)
+		statedb.Finalise(true)
 	}
 
 	c.verifyGasLimitOverride(chain.Config(), chain, header, statedb)
